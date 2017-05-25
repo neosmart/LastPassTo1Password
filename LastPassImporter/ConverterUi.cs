@@ -103,6 +103,7 @@ namespace LastPassImporter
                         Filter = "1Password Import File (*.1pif)|*.1pif",
                         CheckPathExists = true,
                         FileName = $"LastPass Export {DateTime.UtcNow.ToLocalTime().ToString("yyyy-MM-dd")}.1pif",
+                        InitialDirectory = KnownFolders.GetPath(KnownFolder.Documents), //1Password defaults to this directory
                         OverwritePrompt = true,
                         Title = "Select 1Password import file path",
                     };
