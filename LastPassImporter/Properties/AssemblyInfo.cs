@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("LastPassImporter")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("LastPass to 1Password converter")]
+[assembly: AssemblyDescription("Convert LastPass exports to a 1Password import format.")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("LastPassImporter")]
-[assembly: AssemblyCopyright("Copyright ©  2017")]
+[assembly: AssemblyCompany("NeoSmart Technologies")]
+[assembly: AssemblyProduct("LastPass to 1Password converter")]
+[assembly: AssemblyCopyright("Copyright © NeoSmart Technologies 2017")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
