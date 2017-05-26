@@ -1,68 +1,54 @@
 ﻿using Svg;
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
-using System.Drawing.Text;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
-using System.Xml;
 
 namespace LastPassImporter
 {
     public partial class ConverterUi : Form
     {
-        public ConverterUi()
+        private Converter _converter;
+        private System.Threading.Timer _animator = null;
+
+        public ConverterUi(Converter converter)
         {
+            _converter = converter;
+            converter.ConversionCompleted += (b) =>
+            {
+                _animator.Dispose();
+                Invoke((Action)(() => Close()));
+            };
+
             InitializeComponent();
             Load += ConverterUi_Load;
         }
 
-        private async void ConverterUi_Load(object sender, EventArgs e)
+        private void ConverterUi_Load(object sender, EventArgs e)
         {
-            Visible = false;
-            var converter = new Converter();
-            Visible = true;
+            SetForegroundWindow(Handle.ToInt32());
             AnimateLoading();
-
-            try
-            {
-                converter.LoadAndConvert();
-            }
-            catch (ConverterException ex)
-            {
-                MessageBox.Show(this, ex.Message, ex.Title, MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(this, ex.Message, "Unknown exception during conversion!", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
         }
 
         private void AnimateLoading()
         {
             var image = Properties.Resources.sprites_transparent;
 
-            Bitmap cropped = null;
-            var t = new Timer()
-            {
-                Enabled = true,
-                Interval = 15
-            };
-
             int index = 0;
-            t.Tick += (s, e) =>
+            Bitmap cropped = null;
+            _animator = new System.Threading.Timer((o) =>
             {
-                cropped?.Dispose();
-                Rectangle srcRect = new Rectangle((index++ % 20) * 256, 0, 256, 256);
-                cropped = cropped = image.Clone(srcRect, image.PixelFormat);
-                pictureBox1.Image = cropped;
-            };
-            t.Start();
+                Invoke((Action)(() =>
+                {
+                    cropped?.Dispose();
+                    Rectangle srcRect = new Rectangle((index++ % 20) * 256, 0, 256, 256);
+                    cropped = cropped = image.Clone(srcRect, image.PixelFormat);
+                    pictureBox1.Image = cropped;
+                }));
+            }, null, 0, 15);
         }
+
+        [DllImport("User32.dll")]
+        public static extern Int32 SetForegroundWindow(int hWnd);
     }
 }

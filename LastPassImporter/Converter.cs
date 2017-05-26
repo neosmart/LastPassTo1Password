@@ -7,13 +7,27 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace LastPassImporter
 {
-    class Converter
+    public class Converter
     {
+        public delegate void VoidDelegate();
+        public delegate void BoolDelegate(bool conversionSuccessful);
+        public event VoidDelegate ConversionStarted;
+        public event BoolDelegate ConversionCompleted;
+        public event VoidDelegate ProcessCompleted;
+
+        public Converter()
+        {
+            ConversionStarted += () => { };
+            ConversionCompleted += (b) => { };
+            ProcessCompleted += () => { };
+        }
+
         private bool Retry(string title, string message, Func<bool> action)
         {
             while (true)
@@ -39,87 +53,122 @@ namespace LastPassImporter
 
         public void LoadAndConvert()
         {
-            List<PasswordEntry> lastPassEntries = null;
+            bool success = false;
+            try
+            {
+                List<PasswordEntry> lastPassEntries = null;
 
-            bool abort = false;
-            string csvPath = null;
-            if (!Retry("Invalid/corrupt LastPass export!",
-                "The converter was unable to safely load the selected file as a CSV. Ensure the export was correctly generated as a CSV file in LastPass and try again!",
-                () =>
+                bool abort = false;
+                string csvPath = null;
+                if (!Retry("Invalid/corrupt LastPass export!",
+                    "The converter was unable to safely load the selected file as a CSV. Ensure the export was correctly generated as a CSV file in LastPass and try again!",
+                    () =>
+                    {
+                        var loader = new OpenFileDialog()
+                        {
+                            AutoUpgradeEnabled = true,
+                            CheckFileExists = true,
+                            CheckPathExists = true,
+                            DefaultExt = "csv",
+                            Filter = "LastPass CSV Export (*.csv)|*.csv",
+                            InitialDirectory = KnownFolders.GetPath(KnownFolder.Downloads),
+                            Title = "Select LastPass CSV export",
+                        };
+                        var result = loader.ShowDialog();
+
+                        if (result == DialogResult.Cancel)
+                        {
+                            abort = true;
+                            return true;
+                        }
+
+                        csvPath = loader.FileName;
+                        return Validate(csvPath);
+                    }))
                 {
-                    var loader = new OpenFileDialog()
-                    {
-                        AutoUpgradeEnabled = true,
-                        CheckFileExists = true,
-                        CheckPathExists = true,
-                        DefaultExt = "csv",
-                        Filter = "LastPass CSV Export (*.csv)|*.csv",
-                        InitialDirectory = KnownFolders.GetPath(KnownFolder.Downloads),
-                        Title = "Select LastPass CSV export",
-                    };
-                    var result = loader.ShowDialog();
-
-                    if (result == DialogResult.Cancel)
-                    {
-                        abort = true;
-                        return true;
-                    }
-
-                    csvPath = loader.FileName;
-                    return Validate(csvPath);
-                }))
-            {
-                return;
-            }
-            if (abort)
-            {
-                return;
-            }
-
-            if (!GenerateFromExport(csvPath, out lastPassEntries))
-            {
-                throw new ConverterException("Unable to load LastPass export!",
-                    "The converter was unable to import the selected LastPass export. Make sure the selected file is a valid CSV export from the latest version of the LastPass extension and try again!");
-            }
-
-            string onePasswordPath = null;
-            if (!Retry("Read-only file selected!",
-                "A read-only file has been selected and the 1Password Converter cannot proceed. Please select a different path to continue.",
-                () =>
+                    return;
+                }
+                if (abort)
                 {
-                    var saver = new SaveFileDialog()
+                    return;
+                }
+
+                string onePasswordPath = null;
+                if (!Retry("Read-only file selected!",
+                    "A read-only file has been selected and the 1Password Converter cannot proceed. Please select a different path to continue.",
+                    () =>
                     {
-                        AddExtension = true,
-                        AutoUpgradeEnabled = true,
-                        DefaultExt = "1pif",
-                        Filter = "1Password Import File (*.1pif)|*.1pif",
-                        CheckPathExists = true,
-                        FileName = $"LastPass Export {DateTime.UtcNow.ToLocalTime().ToString("yyyy-MM-dd")}.1pif",
-                        InitialDirectory = KnownFolders.GetPath(KnownFolder.Documents), //1Password defaults to this directory
+                        var saver = new SaveFileDialog()
+                        {
+                            AddExtension = true,
+                            AutoUpgradeEnabled = true,
+                            DefaultExt = "1pif",
+                            Filter = "1Password Import File (*.1pif)|*.1pif",
+                            CheckPathExists = true,
+                            FileName = $"LastPass Export {DateTime.UtcNow.ToLocalTime().ToString("yyyy-MM-dd")}.1pif",
+                            InitialDirectory = KnownFolders.GetPath(KnownFolder.Documents), //1Password defaults to this directory
                         OverwritePrompt = true,
-                        Title = "Select 1Password import file path",
-                    };
-                    saver.ShowDialog();
-                    onePasswordPath = saver.FileName;
+                            Title = "Select 1Password import file path",
+                        };
+                        var result = saver.ShowDialog();
 
-                    if (File.Exists(onePasswordPath))
-                    {
-                        return !File.GetAttributes(onePasswordPath).HasFlag(FileAttributes.ReadOnly);
-                    }
-                    return true;
-                }))
-            {
-                return;
+                        if (result == DialogResult.Cancel)
+                        {
+                            abort = true;
+                            return true;
+                        }
+
+                        onePasswordPath = saver.FileName;
+
+                        if (File.Exists(onePasswordPath))
+                        {
+                            return !File.GetAttributes(onePasswordPath).HasFlag(FileAttributes.ReadOnly);
+                        }
+                        return true;
+                    }))
+                {
+                    return;
+                }
+                if (abort)
+                {
+                    return;
+                }
+
+                ConversionStarted();
+
+                //just to prevent a momentary blip of the loading screen, this is the minimum time the process must take
+                var timerElapsed = new ManualResetEventSlim(false);
+                var timer = new System.Threading.Timer((o) => timerElapsed.Set(), null, 2500, 0);
+
+                if (!GenerateFromExport(csvPath, out lastPassEntries))
+                {
+                    throw new ConverterException("Unable to load LastPass export!",
+                        "The converter was unable to import the selected LastPass export. Make sure the selected file is a valid CSV export from the latest version of the LastPass extension and try again!");
+                }
+
+                string lastPassPath = null;
+                if (!SaveAs1Password(onePasswordPath, lastPassEntries, out lastPassPath))
+                {
+                    throw new ConverterException("Unable to create 1Password import file!",
+                        "The converter was unable to create a valid 1Password import file from your backup! Please report this error to the developers.");
+                }
+
+                //wait for the minimum time to pass
+                timerElapsed.Wait();
+
+                ConversionCompleted(success);
+                CompleteActions(csvPath, lastPassPath);
+                success = true;
             }
-
-            string lastPassPath = null;
-            if (!SaveAs1Password(onePasswordPath, lastPassEntries, out lastPassPath))
+            catch
             {
-                throw new ConverterException("Unable to create 1Password import file!",
-                    "The converter was unable to create a valid 1Password import file from your backup! Please report this error to the developers.");
+                ConversionCompleted(false);
+                throw;
             }
-
-            CompleteActions(csvPath, lastPassPath);
+            finally
+            {
+                ProcessCompleted();
+            }
         }
 
         private bool Validate(string csvPath)

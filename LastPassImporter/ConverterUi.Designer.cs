@@ -59,7 +59,7 @@
             // pictureBox1
             // 
             this.pictureBox1.InitialImage = null;
-            this.pictureBox1.Location = new System.Drawing.Point(134, 21);
+            this.pictureBox1.Location = new System.Drawing.Point(134, 16);
             this.pictureBox1.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.pictureBox1.Name = "pictureBox1";
             this.pictureBox1.Size = new System.Drawing.Size(313, 358);
@@ -73,10 +73,11 @@
             this.tableLayoutPanel1.SetColumnSpan(this.label1, 3);
             this.label1.Dock = System.Windows.Forms.DockStyle.Right;
             this.label1.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.label1.Location = new System.Drawing.Point(101, 400);
+            this.label1.Location = new System.Drawing.Point(101, 390);
             this.label1.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(477, 26);
+            this.label1.Padding = new System.Windows.Forms.Padding(0, 0, 0, 10);
+            this.label1.Size = new System.Drawing.Size(477, 36);
             this.label1.TabIndex = 1;
             this.label1.Text = "LastPass to 1Password exporter by NeoSmart Technologies";
             this.label1.TextAlign = System.Drawing.ContentAlignment.TopRight;
