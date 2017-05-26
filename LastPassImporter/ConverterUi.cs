@@ -1,5 +1,4 @@
-﻿using Svg;
-using System;
+﻿using System;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
@@ -33,6 +32,7 @@ namespace LastPassImporter
         private void AnimateLoading()
         {
             var image = Properties.Resources.sprites_transparent;
+            int frames = image.Width / 256;
 
             int index = 0;
             Bitmap cropped = null;
@@ -41,7 +41,7 @@ namespace LastPassImporter
                 Invoke((Action)(() =>
                 {
                     cropped?.Dispose();
-                    Rectangle srcRect = new Rectangle((index++ % 20) * 256, 0, 256, 256);
+                    Rectangle srcRect = new Rectangle((index++ % frames) * 256, 0, 256, 256);
                     cropped = cropped = image.Clone(srcRect, image.PixelFormat);
                     pictureBox1.Image = cropped;
                 }));
