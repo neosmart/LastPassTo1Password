@@ -41,12 +41,16 @@ namespace LastPassImporter
                 thread.SetApartmentState(ApartmentState.STA);
                 thread.Start();
 
-                processStarted.Wait();
-                ui = new ConverterUi(converter);
-                ui.StartPosition = FormStartPosition.CenterScreen;
-                Application.Run(ui);
+                var waitHandles = new[] { processStarted.WaitHandle, complete.WaitHandle };
+                int waitResult = WaitHandle.WaitAny(waitHandles);
+                if (waitResult == 0)
+                {
+                    ui = new ConverterUi(converter);
+                    ui.StartPosition = FormStartPosition.CenterScreen;
+                    Application.Run(ui);
 
-                complete.Wait();
+                    complete.Wait();
+                }
             }
             catch (ConverterException ex)
             {
