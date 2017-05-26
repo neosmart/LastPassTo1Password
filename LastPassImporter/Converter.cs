@@ -55,8 +55,6 @@ namespace LastPassImporter
             bool success = false;
             try
             {
-                List<PasswordEntry> lastPassEntries = null;
-
                 bool abort = false;
                 string csvPath = null;
                 if (!Retry("Invalid/corrupt LastPass export!",
@@ -139,7 +137,7 @@ namespace LastPassImporter
                 var timerElapsed = new ManualResetEventSlim(false);
                 var timer = new System.Threading.Timer((o) => timerElapsed.Set(), null, 2500, 0);
 
-                if (!GenerateFromExport(csvPath, out lastPassEntries))
+                if (!GenerateFromExport(csvPath, out List<PasswordEntry> lastPassEntries))
                 {
                     throw new ConverterException("Unable to load LastPass export!",
                         "The converter was unable to import the selected LastPass export. Make sure the selected file is a valid CSV export from the latest version of the LastPass extension and try again!");
